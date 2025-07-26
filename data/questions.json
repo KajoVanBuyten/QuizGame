@@ -1,0 +1,158 @@
+{
+  "Sport": {
+    "100": {
+      "text": "Wie viele Spieler stehen bei einer Fußballmannschaft auf dem Feld?",
+      "choices": ["10", "11", "12", "9"]
+    },
+    "200": {
+      "text": "Welcher Tennisschlägerhersteller hat das Logo mit den zwei überlappenden Kreisen?",
+      "choices": ["Wilson", "Babolat", "Yonex", "Head"]
+    },
+    "300": {
+      "text": "In welcher Sportart gibt es das ‚Magische Viereck‘?",
+      "choices": ["Basketball", "Fußball", "Handball", "Volleyball"]
+    },
+    "400": {
+      "text": "Wer gewann die Marathon-Weltmeisterschaft 2019?",
+      "choices": ["Eliud Kipchoge", "Haile Gebrselassie", "Mo Farah", "Wilson Kipsang"]
+    },
+    "500": {
+      "text": "Welcher Boxer war bekannt als ‚The Greatest‘?",
+      "choices": ["Mike Tyson", "Floyd Mayweather", "Muhammad Ali", "Joe Frazier"]
+    },
+    "600": {
+      "text": "Wer war der erste Mensch, der sowohl einen Olympiasieg im Weitsprung als auch im Sprint errang?",
+      "choices": ["Carl Lewis", "Jesse Owens", "Usain Bolt", "Bob Beamon"]
+    }
+  },
+  "Geschichte": {
+    "100": {
+      "text": "In welchem Jahr begann der Erste Weltkrieg?",
+      "choices": ["1918", "1914", "1939", "1923"]
+    },
+    "200": {
+      "text": "Wer war der erste römische Kaiser?",
+      "choices": ["Caesar", "Augustus", "Nero", "Tiberius"]
+    },
+    "300": {
+      "text": "Wann wurde die Berliner Mauer gebaut?",
+      "choices": ["1945", "1961", "1950", "1989"]
+    },
+    "400": {
+      "text": "Welches Abkommen beendete 1648 den Dreißigjährigen Krieg?",
+      "choices": ["Wiener Kongress", "Westfälischer Friede", "Augsburger Religionsfrieden", "Vertrag von Versailles"]
+    },
+    "500": {
+      "text": "Wer verfasste die Magna Carta 1215?",
+      "choices": ["König Johann Ohneland", "Richard Löwenherz", "William Wallace", "Edward der Bekenner"]
+    },
+    "600": {
+      "text": "Wie hieß die Hauptstadt des Byzantinischen Reiches vor Konstantinopel?",
+      "choices": ["Byzanz", "Athen", "Sparta", "Troja"]
+    }
+  },
+  "Wissenschaft": {
+    "100": {
+      "text": "Wie lautet die chemische Formel von Wasser?",
+      "choices": ["H2O2", "CO2", "H2O", "O2"]
+    },
+    "200": {
+      "text": "Wer entdeckte die Relativitätstheorie?",
+      "choices": ["Isaac Newton", "Albert Einstein", "Marie Curie", "Galileo Galilei"]
+    },
+    "300": {
+      "text": "Was misst ein Seismograph?",
+      "choices": ["Windgeschwindigkeit", "Erdbeben", "Luftdruck", "Lichtintensität"]
+    },
+    "400": {
+      "text": "Welches Teilchen wurde 2012 am CERN bestätigt?",
+      "choices": ["Higgs-Boson", "Quark", "Neutrino", "Gluon"]
+    },
+    "500": {
+      "text": "Wie lautet das Plancksche Wirkungsquantum?",
+      "choices": ["6,63 × 10⁻³⁴ Js", "9,81 m/s²", "1,6 × 10⁻¹⁹ C", "3 × 10⁸ m/s"]
+    },
+    "600": {
+      "text": "Welcher Wissenschaftler entdeckte die Röntgenstrahlung?",
+      "choices": ["Wilhelm Conrad Röntgen", "Heinrich Hertz", "Max Planck", "Ernest Rutherford"]
+    }
+  },
+  "Film": {
+    "100": {
+      "text": "Wer spielte den ‚Paten‘ im Kinofilm von 1972?",
+      "choices": ["Marlon Brando", "Al Pacino", "Robert De Niro", "James Caan"]
+    },
+    "200": {
+      "text": "Welcher Regisseur inszenierte ‚Inception‘?",
+      "choices": ["Christopher Nolan", "Steven Spielberg", "James Cameron", "Quentin Tarantino"]
+    },
+    "300": {
+      "text": "Wie heißt die Filmreihe um Luke Skywalker?",
+      "choices": ["Star Wars", "Star Trek", "Indiana Jones", "Matrix"]
+    },
+    "400": {
+      "text": "Wer gewann den Oscar als bester Film 1994?",
+      "choices": ["Forrest Gump", "Pulp Fiction", "The Shawshank Redemption", "Vier Hochzeiten und ein Todesfall"]
+    },
+    "500": {
+      "text": "Welcher Film startete die ‚Marvel Cinematic Universe‘?",
+      "choices": ["Iron Man", "The Incredible Hulk", "Thor", "Captain America: The First Avenger"]
+    },
+    "600": {
+      "text": "Welcher deutsche Film gewann 2007 den Oscar als bester fremdsprachiger Film?",
+      "choices": ["Das Leben der Anderen", "Good Bye, Lenin!", "Das Boot", "Der Untergang"]
+    }
+  },
+  "Geographie": {
+    "100": {
+      "text": "Wie heißt die Hauptstadt von Frankreich?",
+      "choices": ["Paris", "Lyon", "Marseille", "Toulouse"]
+    },
+    "200": {
+      "text": "Welches Land hat die meisten Inseln?",
+      "choices": ["Indonesien", "Schweden", "Finnland", "Kanada"]
+    },
+    "300": {
+      "text": "Welcher Fluss ist der längste der Welt?",
+      "choices": ["Nil", "Amazonas", "Mississippi", "Jangtse"]
+    },
+    "400": {
+      "text": "Wo befindet sich der tiefste Punkt der Erde?",
+      "choices": ["Marianengraben", "Totes Meer", "Kaspisches Meer", "Baikalsee"]
+    },
+    "500": {
+      "text": "Welches Land hat die höchste durchschnittliche Höhe über dem Meeresspiegel?",
+      "choices": ["Nepal", "Bolivien", "Schweiz", "China"]
+    },
+    "600": {
+      "text": "Welche Wüste ist flächenmäßig die größte der Welt?",
+      "choices": ["Sahara", "Antarktis", "Arktis", "Gobi"]
+    }
+  },
+  "Literatur": {
+    "100": {
+      "text": "Wer schrieb 'Faust'?",
+      "choices": ["Goethe", "Schiller", "Lessing", "Heine"]
+    },
+    "200": {
+      "text": "Welcher englische Dramatiker verfasste 'Hamlet'?",
+      "choices": ["Shakespeare", "Dickens", "Marlowe", "Austen"]
+    },
+    "300": {
+      "text": "Wie heißt der Autor von 'Der Herr der Ringe'?",
+      "choices": ["J. R. R. Tolkien", "George R. R. Martin", "C. S. Lewis", "J. K. Rowling"]
+    },
+    "400": {
+      "text": "Welcher Roman beginnt mit dem Satz: 'Alle glücklichen Familien gleichen einander...'? ",
+      "choices": ["Anna Karenina", "Effi Briest", "Madame Bovary", "Krieg und Frieden"]
+    },
+    "500": {
+      "text": "Wie lautet der Name des fiktiven Detektivs, der von Sir Arthur Conan Doyle erschaffen wurde?",
+      "choices": ["Hercule Poirot", "Sherlock Holmes", "Miss Marple", "Columbo"]
+    },
+    "600": {
+      "text": "Welcher Roman gilt als das erste Werk der Weltliteratur und stammt aus dem alten Mesopotamien?",
+      "choices": ["Gilgamesch-Epos", "Odyssee", "Ilias", "Beowulf"]
+    }
+  }
+}
