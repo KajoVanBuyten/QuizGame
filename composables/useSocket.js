@@ -24,7 +24,7 @@ export function useSocket() {
     };
 
     onMounted(() => {
-        socket.value = io('http://localhost:4000', {
+        socket.value = io(`http://${window.location.hostname}:4000`, {
             path: '/socket/',
             transports: ['websocket'],
             reconnection: true,
