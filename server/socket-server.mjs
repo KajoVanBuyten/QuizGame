@@ -1,95 +1,146 @@
-import { Server } from 'socket.io';
-import { readFileSync } from 'fs';
+import { Server } from 'socket.io'
+import { readFileSync, existsSync, watchFile } from 'fs'
 
-const server = new Server(4000, {
+const PORT = 4000
+
+let questions = loadQuestions()
+const categories = Object.keys(questions)
+
+const boardState = categories.map(cat =>
+    questions[cat].map(q => ({
+        points: q.points,
+        status: 'blue'
+    }))
+)
+
+const players = new Map()
+let currentQuestion = null
+let currentBuzzer = null
+let buzzState = 'inactive'
+let showLosButton = true
+
+const server = new Server(PORT, {
+    host: '0.0.0.0',
     path: '/socket/',
     cors: {
-        origin: 'http://localhost:3000',
+        origin: '*',
         methods: ['GET', 'POST'],
         credentials: true
     }
-});
+})
 
-const questions = JSON.parse(readFileSync('./data/questions.json', 'utf-8'));
+console.log(`✅ Socket.IO Server läuft auf Port ${PORT}`)
 
-const players = new Map();
-const boardState = Array(6).fill(null).map(() => Array(6).fill('blue'));
-let buzzState = 'inactive';
-let currentQuestion = null;
-let currentBuzzer = null;
-let showLosButton = true;
+// 📁 Live-Dateiüberwachung auf /data/questions.json
+watchFile('./data/questions.json', { interval: 1000 }, () => {
+    console.log('🌀 questions.json geändert – reloading...')
+    questions = loadQuestions()
+
+    categories.forEach((cat, catIndex) => {
+        const newRows = questions[cat].map(q => {
+            const existing = boardState[catIndex]?.find(r => r.points === q.points)
+            return {
+                points: q.points,
+                status: existing ? existing.status : 'blue'
+            }
+        })
+        boardState[catIndex] = newRows
+    })
+
+    server.emit('boardUpdate', boardState)
+    server.emit('questionsReloaded') // 🟢 Notify Moderator UI (für Blink z. B.)
+})
 
 server.on('connection', (socket) => {
-    console.log('Client connected:', socket.id);
+    console.log('Client connected:', socket.id)
+
+    socket.emit('boardUpdate', boardState)
+    sendPlayers()
 
     socket.on('join', (name) => {
-        console.log('Spieler verbunden:', name);
-        players.set(socket.id, { name, points: 0 });
-        server.emit('players', Array.from(players.entries()).map(([id, p]) => ({ id, ...p })));
-    });
+        players.set(socket.id, { name, points: 0 })
+        sendPlayers()
+    })
 
     socket.on('selectQuestion', ({ category, points }) => {
-        console.log('Frage gewählt:', category, points);
-        const catIndex = ['Sport', 'Geschichte', 'Wissenschaft', 'Film', 'Geographie', 'Literatur'].indexOf(category);
-        const pointIndex = [100, 200, 300, 400, 500, 600].indexOf(points);
+        const catIndex = categories.indexOf(category)
+        if (catIndex === -1) return
 
-        console.log('Fragen state:', boardState[catIndex][pointIndex]);
+        const row = boardState[catIndex].find(q => q.points === points)
+        if (!row || row.status !== 'blue') return
+        row.status = 'green'
 
-        if (catIndex >= 0 && pointIndex >= 0 && boardState[catIndex][pointIndex] === 'blue') {
-            boardState[catIndex][pointIndex] = 'green';
-            currentQuestion = {
-                category,
-                points,
-                text: questions[category][points]?.text,
-                choices: questions[category][points]?.choices,
-            };
-            showLosButton = true;
-            server.emit('boardUpdate', boardState);
-            server.emit('question', currentQuestion);
-            server.emit('showLosButton', showLosButton);
+        const questionData = questions[category].find(q => q.points === points)
+        if (!questionData) return
+
+        currentQuestion = {
+            category,
+            points,
+            text: questionData.text,
+            choices: questionData.choices
         }
 
-        console.log('📤 Sende Frage:', JSON.stringify(currentQuestion, null, 2));
-    });
+        buzzState = 'inactive'
+        currentBuzzer = null
+        showLosButton = true
+
+        server.emit('boardUpdate', boardState)
+        server.emit('question', currentQuestion)
+        server.emit('showLosButton', showLosButton)
+    })
 
     socket.on('startRound', () => {
-        buzzState = 'active';
-        currentBuzzer = null;
-        server.emit('buzzState', buzzState);
-        showLosButton = false;
-        server.emit('showLosButton', showLosButton);
-    });
+        buzzState = 'active'
+        currentBuzzer = null
+        showLosButton = false
+        server.emit('buzzState', buzzState)
+        server.emit('showLosButton', showLosButton)
+    })
 
     socket.on('buzz', () => {
         if (buzzState === 'active' && !currentBuzzer) {
-            currentBuzzer = socket.id;
-            server.emit('buzzer', players.get(socket.id)?.name ?? 'Unknown');
+            currentBuzzer = socket.id
+            const name = players.get(socket.id)?.name ?? 'Unbekannt'
+            server.emit('buzzer', name)
         }
-    });
+    })
 
     socket.on('evaluate', ({ correct }) => {
         if (correct && currentBuzzer && currentQuestion) {
-            players.get(currentBuzzer).points += currentQuestion.points;
-            server.emit('players', Array.from(players.entries()).map(([id, p]) => ({ id, ...p })));
-            showLosButton = false;
-        } else {
-            showLosButton = true;
+            const p = players.get(currentBuzzer)
+            if (p) p.points += currentQuestion.points
+            sendPlayers()
+            currentQuestion = null
         }
-        buzzState = 'inactive';
-        currentBuzzer = null;
-        server.emit('buzzState', buzzState);
-        server.emit('buzzer', null);
-        server.emit('showLosButton', showLosButton);
-    });
+        buzzState = 'inactive'
+        currentBuzzer = null
+        showLosButton = !correct
+
+        server.emit('buzzState', buzzState)
+        server.emit('buzzer', null)
+        server.emit('showLosButton', showLosButton)
+        if (!correct) {
+            server.emit('question', currentQuestion)
+        }
+    })
 
     socket.on('disconnect', () => {
-        players.delete(socket.id);
-        server.emit('players', Array.from(players.entries()).map(([id, p]) => ({ id, ...p })));
-    });
+        players.delete(socket.id)
+        sendPlayers()
+    })
+})
 
-    socket.on('error', (err) => {
-        console.error(err);
-    });
-});
+function loadQuestions() {
+    const path = './data/questions.json'
+    if (!existsSync(path)) {
+        throw new Error('❌ questions.json not found in /data/')
+    }
+    return JSON.parse(readFileSync(path, 'utf-8'))
+}
 
-console.log('✅ Socket.IO Server läuft auf Port 4000');
+function sendPlayers() {
+    server.emit(
+        'players',
+        Array.from(players.entries()).map(([id, p]) => ({ id, ...p }))
+    )
+}
