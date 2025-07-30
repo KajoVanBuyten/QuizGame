@@ -1,23 +1,32 @@
 import { Server } from 'socket.io'
-import { readFileSync, existsSync, watchFile } from 'fs'
+import fs, { readFileSync, writeFileSync, existsSync, watchFile } from 'fs'
 
 const PORT = 4000
 
 let questions = loadQuestions()
-const categories = Object.keys(questions)
+let categories = Object.keys(questions)
 
-const boardState = categories.map(cat =>
-    questions[cat].map(q => ({
-        points: q.points,
-        status: 'blue'
-    }))
-)
+let boardState = {}
 
-const players = new Map()
+const playersByToken = new Map()
+const sockets = new Map()
+
 let currentQuestion = null
 let currentBuzzer = null
 let buzzState = 'inactive'
 let showLosButton = true
+
+loadState()
+
+// Nur initialisieren, wenn boardState leer
+if (Object.keys(boardState).length === 0) {
+    for (const category of categories) {
+        boardState[category] = questions[category].map(q => ({
+            points: q.points,
+            status: 'blue'
+        }))
+    }
+}
 
 const server = new Server(PORT, {
     host: '0.0.0.0',
@@ -31,53 +40,81 @@ const server = new Server(PORT, {
 
 console.log(`✅ Socket.IO Server läuft auf Port ${PORT}`)
 
-// 📁 Live-Dateiüberwachung auf /data/questions.json
 watchFile('./data/questions.json', { interval: 1000 }, () => {
-    console.log('🌀 questions.json geändert – reloading...')
+    console.log('🔀 questions.json geändert – reloading...')
     questions = loadQuestions()
 
-    categories.forEach((cat, catIndex) => {
-        const newRows = questions[cat].map(q => {
-            const existing = boardState[catIndex]?.find(r => r.points === q.points)
+    const newCats = Object.keys(questions)
+    const oldCats = [...categories]
+    categories = newCats
+
+    for (const cat of categories) {
+        const oldEntries = boardState[cat] ?? []
+
+        boardState[cat] = questions[cat].map(q => {
+            const existing = oldEntries.find(e => e.points === q.points)
             return {
                 points: q.points,
-                status: existing ? existing.status : 'blue'
+                status: existing?.status ?? 'blue'
             }
         })
-        boardState[catIndex] = newRows
-    })
+    }
+
+    for (const oldCat of oldCats) {
+        if (!categories.includes(oldCat)) {
+            delete boardState[oldCat]
+        }
+    }
 
     server.emit('boardUpdate', boardState)
-    server.emit('questionsReloaded') // 🟢 Notify Moderator UI (für Blink z. B.)
+    server.emit('questionsReloaded')
 })
 
 server.on('connection', (socket) => {
     console.log('Client connected:', socket.id)
-
     socket.emit('boardUpdate', boardState)
     sendPlayers()
 
-    socket.on('join', (name) => {
-        players.set(socket.id, { name, points: 0 })
+    socket.on('join', ({ name, token }) => {
+        if (!name || !token) return
+        const existing = playersByToken.get(token)
+        if (existing && existing.name !== name) {
+            socket.emit('joinError', 'Name bereits vergeben.')
+            return
+        }
+        playersByToken.set(token, {
+            name,
+            points: existing?.points ?? 0,
+            token
+        })
+        sockets.set(socket.id, token)
+        persistState()
         sendPlayers()
     })
 
-    socket.on('selectQuestion', ({ category, points }) => {
-        const catIndex = categories.indexOf(category)
-        if (catIndex === -1) return
+    socket.on('reconnectWithToken', (token) => {
+        const player = playersByToken.get(token)
+        if (!player) return
+        sockets.set(socket.id, token)
+        persistState()
+        sendPlayers()
+        socket.emit('autoJoinSuccess', player.name)
+    })
 
-        const row = boardState[catIndex].find(q => q.points === points)
+    socket.on('selectQuestion', ({ category, points }) => {
+        const row = boardState[category]?.find(q => q.points === points)
         if (!row || row.status !== 'blue') return
-        row.status = 'green'
 
         const questionData = questions[category].find(q => q.points === points)
         if (!questionData) return
 
+        row.status = 'green'
         currentQuestion = {
             category,
             points,
             text: questionData.text,
-            choices: questionData.choices
+            choices: questionData.choices,
+            correctIndex: questionData.correctIndex
         }
 
         buzzState = 'inactive'
@@ -100,18 +137,27 @@ server.on('connection', (socket) => {
     socket.on('buzz', () => {
         if (buzzState === 'active' && !currentBuzzer) {
             currentBuzzer = socket.id
-            const name = players.get(socket.id)?.name ?? 'Unbekannt'
+            const token = sockets.get(socket.id)
+            const name = playersByToken.get(token)?.name ?? 'Unbekannt'
             server.emit('buzzer', name)
         }
     })
 
     socket.on('evaluate', ({ correct }) => {
         if (correct && currentBuzzer && currentQuestion) {
-            const p = players.get(currentBuzzer)
+            const token = sockets.get(currentBuzzer)
+            const p = playersByToken.get(token)
             if (p) p.points += currentQuestion.points
+
+            const field = boardState[currentQuestion.category]?.find(q => q.points === currentQuestion.points)
+            if (field) field.status = 'green'
+
             sendPlayers()
+            persistState()
             currentQuestion = null
+            server.emit('resetUI')
         }
+
         buzzState = 'inactive'
         currentBuzzer = null
         showLosButton = !correct
@@ -119,28 +165,120 @@ server.on('connection', (socket) => {
         server.emit('buzzState', buzzState)
         server.emit('buzzer', null)
         server.emit('showLosButton', showLosButton)
-        if (!correct) {
-            server.emit('question', currentQuestion)
+        if (!correct) server.emit('question', currentQuestion)
+    })
+
+    socket.on('resetGame', () => {
+        for (const [socketId, token] of sockets.entries()) {
+            const client = server.sockets.sockets.get(socketId)
+            if (client) {
+                client.emit('forceReconnect')
+                client.disconnect(true)
+            }
+        }
+
+        playersByToken.clear()
+        sockets.clear()
+        currentQuestion = null
+        buzzState = 'inactive'
+        currentBuzzer = null
+        for (const cat of categories) {
+            boardState[cat].forEach(cell => (cell.status = 'blue'))
+        }
+        if (existsSync('./data/game-state.json')) fs.unlinkSync('./data/game-state.json')
+        sendPlayers()
+        persistState()
+        server.emit('boardUpdate', boardState)
+        server.emit('resetUI')
+    })
+
+    socket.on('kick', (socketId) => {
+        const client = server.sockets.sockets.get(socketId)
+        const token = sockets.get(socketId)
+        if (client) {
+            console.log('⛔ Verbindung wird getrennt:', socketId)
+            if (token) {
+                playersByToken.delete(token)
+                sockets.delete(socketId)
+                persistState()
+            }
+            client.disconnect(true)
+            sendPlayers()
         }
     })
 
     socket.on('disconnect', () => {
-        players.delete(socket.id)
+        sockets.delete(socket.id)
         sendPlayers()
     })
 })
 
 function loadQuestions() {
     const path = './data/questions.json'
-    if (!existsSync(path)) {
-        throw new Error('❌ questions.json not found in /data/')
-    }
+    if (!existsSync(path)) throw new Error('❌ questions.json not found in /data/')
     return JSON.parse(readFileSync(path, 'utf-8'))
 }
 
 function sendPlayers() {
-    server.emit(
-        'players',
-        Array.from(players.entries()).map(([id, p]) => ({ id, ...p }))
-    )
+    const players = Array.from(sockets.entries()).map(([socketId, token]) => {
+        const p = playersByToken.get(token)
+        return p ? { id: socketId, ...p } : null
+    }).filter(Boolean)
+    server.emit('players', players)
+}
+
+function persistState() {
+    const cleanBoardState = {}
+    for (const [category, entries] of Object.entries(boardState)) {
+        cleanBoardState[category] = entries.map(({ points, status }) => ({ points, status }))
+    }
+
+    const saveData = {
+        boardState: cleanBoardState,
+        currentQuestion,
+        players: Object.fromEntries(playersByToken.entries()),
+        categories
+    }
+
+    writeFileSync('./data/game-state.json', JSON.stringify(saveData, null, 2))
+}
+
+function persistPlayersOnly() {
+    const path = './data/game-state.json'
+
+    let data = {}
+    if (existsSync(path)) {
+        try {
+            data = JSON.parse(readFileSync(path, 'utf-8'))
+        } catch (e) {
+            console.warn('⚠️ Konnte game-state.json nicht lesen:', e)
+        }
+    }
+
+    // Update nur den Player-Teil, Rest unverändert
+    data.players = Object.fromEntries(playersByToken.entries())
+
+    writeFileSync(path, JSON.stringify(data, null, 2))
+}
+
+function loadState() {
+    const path = './data/game-state.json'
+    if (!existsSync(path)) return
+
+    try {
+        const state = JSON.parse(readFileSync(path, 'utf-8'))
+
+        if (state.categories) categories = state.categories
+        if (state.boardState) boardState = state.boardState
+        if (state.players) {
+            for (const [token, player] of Object.entries(state.players)) {
+                playersByToken.set(token, player)
+            }
+        }
+
+        // Frage ggf. wieder anzeigen (falls gewünscht)
+        currentQuestion = state.currentQuestion ?? null
+    } catch (e) {
+        console.warn('⚠️ Fehler beim Laden des Spielstands:', e)
+    }
 }

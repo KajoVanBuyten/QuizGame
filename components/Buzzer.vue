@@ -1,9 +1,9 @@
 <template>
   <button
-      :disabled="buzzState !== 'active'"
+      :disabled="disabled"
       @click="buzz"
       class="btn btn-error text-4xl h-64 w-64 rounded-full"
-      :class="{ 'opacity-50 cursor-not-allowed': buzzState !== 'active' }"
+      :class="{ 'opacity-50 cursor-not-allowed': disabled }"
   >
     BUZZER
   </button>
@@ -12,7 +12,10 @@
 <script setup>
 import { defineProps, defineEmits } from 'vue'
 
-defineProps(['buzzState'])
+defineProps({
+  buzzState: String,
+  disabled: Boolean
+})
 const emit = defineEmits(['buzz'])
 
 const buzz = () => {

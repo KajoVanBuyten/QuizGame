@@ -1,10 +1,10 @@
 <template>
   <div class="grid grid-cols-6 gap-1 text-center">
-    <div v-for="(category, catIndex) in categories" :key="category">
-      <div class="text-white font-bold py-4 rounded-lg bg-blue-500 shadow mb-1 text-xl">
+    <div v-for="(fields, category) in board" :key="category">
+      <div class="text-white font-bold py-4 rounded-lg bg-blue-800 shadow mb-1 text-xl">
         {{ category }}
       </div>
-      <div v-for="field in board[catIndex]" :key="field.points" class="mb-1">
+      <div v-for="field in fields" :key="field.points" class="mb-1">
         <button
             class="w-full py-4 text-xl font-semibold rounded-lg shadow text-white transition"
             :class="{
@@ -24,7 +24,7 @@
 <script setup>
 defineProps({
   board: {
-    type: Array,
+    type: Object, // 🟢 vorher war es Array
     required: true
   },
   disabled: {
@@ -32,6 +32,4 @@ defineProps({
     default: false
   }
 })
-
-const categories = ['Sport', 'Geschichte', 'Wissenschaft', 'Film', 'Geographie', 'Literatur']
 </script>
